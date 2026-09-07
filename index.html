@@ -12,18 +12,30 @@
       <div class="eyebrow">Visual podcast editor</div>
       <h1>SlideLine</h1>
     </div>
-    <button id="newProjectBtn" class="secondary-btn">New timeline</button>
+    <div class="header-actions">
+      <button id="viewJsonBtn" class="secondary-btn">View JSON</button>
+      <button id="importJsonBtn" class="secondary-btn">Paste JSON</button>
+      <button id="newProjectBtn" class="secondary-btn">New timeline</button>
+    </div>
   </header>
 
   <main class="app-shell">
     <section class="timeline-panel">
       <div class="panel-heading">
-        <div>
+        <div class="project-heading-copy">
           <h2 id="projectTitle">Untitled timeline</h2>
           <p id="projectMeta">10:00 · 1920 × 1080</p>
         </div>
-        <button id="addSegmentBtn" class="primary-btn">+ Add segment</button>
+        <div class="project-controls">
+          <label class="duration-control">
+            Overall length
+            <input id="projectDurationInput" value="10:00" aria-label="Overall timeline length">
+          </label>
+          <button id="addSegmentBtn" class="primary-btn">+ Add segment</button>
+        </div>
       </div>
+
+      <div id="durationNotice" class="duration-notice" hidden></div>
 
       <div class="timeline-wrap">
         <div id="timeline" class="timeline"></div>
@@ -85,6 +97,36 @@
       <div class="dialog-actions">
         <button type="button" id="cancelSegmentBtn" class="secondary-btn">Cancel</button>
         <button value="default" class="primary-btn">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="jsonViewDialog" class="json-dialog">
+    <div class="dialog-form">
+      <div class="json-dialog-heading">
+        <div>
+          <h2>Current project JSON</h2>
+          <p>Live representation of the current SlideLine project.</p>
+        </div>
+        <button id="closeJsonViewBtn" type="button" class="secondary-btn">Close</button>
+      </div>
+      <textarea id="jsonViewOutput" class="json-editor" readonly spellcheck="false"></textarea>
+    </div>
+  </dialog>
+
+  <dialog id="jsonImportDialog" class="json-dialog">
+    <form id="jsonImportForm" class="dialog-form">
+      <div class="json-dialog-heading">
+        <div>
+          <h2>Paste project JSON</h2>
+          <p>Replaces the current project after validation. Segments beyond the project duration are preserved.</p>
+        </div>
+      </div>
+      <textarea id="jsonImportInput" class="json-editor" placeholder="Paste SlideLine JSON here…" spellcheck="false"></textarea>
+      <div id="jsonImportError" class="json-error" role="alert" hidden></div>
+      <div class="dialog-actions">
+        <button type="button" id="cancelJsonImportBtn" class="secondary-btn">Cancel</button>
+        <button type="submit" class="primary-btn">Load JSON</button>
       </div>
     </form>
   </dialog>
