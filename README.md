@@ -12,3 +12,7 @@ SlideLine is a simple visual timeline editor for building image and text sequenc
 - Keep project data in a simple JSON-shaped model
 
 Audio, uploads, Firebase persistence, and video rendering are intentionally deferred until the editor workflow is proven.
+
+## Live app
+
+https://slideline-d30c3.web.app
