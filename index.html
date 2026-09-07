@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SlideLine</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="eyebrow">Visual podcast editor</div>
+      <h1>SlideLine</h1>
+    </div>
+    <button id="newProjectBtn" class="secondary-btn">New timeline</button>
+  </header>
+
+  <main class="app-shell">
+    <section class="timeline-panel">
+      <div class="panel-heading">
+        <div>
+          <h2 id="projectTitle">Untitled timeline</h2>
+          <p id="projectMeta">10:00 · 1920 × 1080</p>
+        </div>
+        <button id="addSegmentBtn" class="primary-btn">+ Add segment</button>
+      </div>
+
+      <div class="timeline-wrap">
+        <div id="timeline" class="timeline"></div>
+      </div>
+    </section>
+
+    <aside class="editor-panel">
+      <div class="preview-frame" id="previewFrame">
+        <div class="preview-placeholder">Select a segment</div>
+      </div>
+
+      <div id="segmentEditor" class="segment-editor empty-state">
+        <h3>Nothing selected</h3>
+        <p>Add a segment or select one from the timeline to edit it here.</p>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="projectDialog">
+    <form method="dialog" id="projectForm" class="dialog-form">
+      <h2>Create timeline</h2>
+      <label>
+        Project title
+        <input id="projectNameInput" value="My podcast episode" required>
+      </label>
+      <div class="field-row">
+        <label>
+          Minutes
+          <input id="minutesInput" type="number" min="0" value="10" required>
+        </label>
+        <label>
+          Seconds
+          <input id="secondsInput" type="number" min="0" max="59" value="0" required>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="cancelProjectBtn" class="secondary-btn">Cancel</button>
+        <button value="default" class="primary-btn">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="segmentDialog">
+    <form method="dialog" id="segmentForm" class="dialog-form">
+      <h2>Add segment</h2>
+      <label>
+        Type
+        <select id="segmentTypeInput">
+          <option value="image">Image</option>
+          <option value="text">Text slide</option>
+          <option value="imageText">Image + text</option>
+          <option value="blank">Blank / colour</option>
+        </select>
+      </label>
+      <label>
+        Start time
+        <input id="segmentStartInput" value="00:00" placeholder="mm:ss">
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancelSegmentBtn" class="secondary-btn">Cancel</button>
+        <button value="default" class="primary-btn">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
