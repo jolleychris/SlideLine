@@ -1,5 +1,6 @@
 const state = {
   project: {
+    schemaVersion: 1,
     title: "My podcast episode",
     duration: 600,
     format: { width: 1920, height: 1080 },
@@ -17,24 +18,33 @@ const projectDialog = document.getElementById("projectDialog");
 const segmentDialog = document.getElementById("segmentDialog");
 const projectForm = document.getElementById("projectForm");
 const segmentForm = document.getElementById("segmentForm");
+const projectDurationInput = document.getElementById("projectDurationInput");
+const durationNotice = document.getElementById("durationNotice");
+const jsonViewDialog = document.getElementById("jsonViewDialog");
+const jsonViewOutput = document.getElementById("jsonViewOutput");
+const jsonImportDialog = document.getElementById("jsonImportDialog");
+const jsonImportForm = document.getElementById("jsonImportForm");
+const jsonImportInput = document.getElementById("jsonImportInput");
+const jsonImportError = document.getElementById("jsonImportError");
 
 const pad = value => String(value).padStart(2, "0");
 
 function formatTime(seconds) {
   const safe = Math.max(0, Math.round(Number(seconds) || 0));
-  const mins = Math.floor(safe / 60);
+  const hours = Math.floor(safe / 3600);
+  const mins = Math.floor((safe % 3600) / 60);
   const secs = safe % 60;
-  return `${pad(mins)}:${pad(secs)}`;
+  return hours > 0 ? `${pad(hours)}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
 }
 
 function parseTime(value) {
   const raw = String(value || "").trim();
   if (/^\d+$/.test(raw)) return Number(raw);
   const parts = raw.split(":").map(Number);
-  if (parts.some(Number.isNaN)) return 0;
+  if (parts.some(Number.isNaN)) return NaN;
   if (parts.length === 2) return parts[0] * 60 + parts[1];
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  return 0;
+  return NaN;
 }
 
 function sortSegments() {
@@ -48,23 +58,14 @@ function nextSegmentAfter(segment) {
 }
 
 function effectiveEnd(segment) {
-  if (segment.endMode === "duration") {
-    return Math.min(state.project.duration, segment.start + (segment.duration || 0));
-  }
-  if (segment.endMode === "end" && Number.isFinite(segment.end)) {
-    return Math.min(state.project.duration, segment.end);
-  }
+  if (segment.endMode === "duration") return segment.start + (segment.duration || 0);
+  if (segment.endMode === "end" && Number.isFinite(segment.end)) return segment.end;
   const next = nextSegmentAfter(segment);
   return next ? next.start : state.project.duration;
 }
 
 function typeLabel(type) {
-  return {
-    image: "Image",
-    text: "Text",
-    imageText: "Image + text",
-    blank: "Blank"
-  }[type] || type;
+  return { image: "Image", text: "Text", imageText: "Image + text", blank: "Blank" }[type] || type;
 }
 
 function segmentSummary(segment) {
@@ -74,10 +75,30 @@ function segmentSummary(segment) {
   return `${formatTime(segment.start)} · to ${formatTime(end)}`;
 }
 
+function projectJson() {
+  return JSON.stringify(state.project, null, 2);
+}
+
+function segmentsBeyondDuration() {
+  return state.project.segments.filter(segment => segment.start > state.project.duration || effectiveEnd(segment) > state.project.duration);
+}
+
+function renderDurationNotice() {
+  const beyond = segmentsBeyondDuration();
+  if (!beyond.length) {
+    durationNotice.hidden = true;
+    durationNotice.textContent = "";
+    return;
+  }
+  durationNotice.hidden = false;
+  durationNotice.textContent = `${beyond.length} segment${beyond.length === 1 ? " is" : "s are"} beyond the current timeline length. They remain in the JSON and have not been deleted.`;
+}
+
 function renderTimeline() {
   sortSegments();
   projectTitle.textContent = state.project.title;
   projectMeta.textContent = `${formatTime(state.project.duration)} · ${state.project.format.width} × ${state.project.format.height}`;
+  projectDurationInput.value = formatTime(state.project.duration);
   timeline.innerHTML = "";
 
   if (!state.project.segments.length) {
@@ -85,12 +106,13 @@ function renderTimeline() {
     empty.className = "empty-timeline";
     empty.innerHTML = `<strong>No segments yet.</strong><p>Add the first visual at 00:00, then build downward through the episode.</p>`;
     timeline.appendChild(empty);
+    renderDurationNotice();
     return;
   }
 
   state.project.segments.forEach(segment => {
     const marker = document.createElement("div");
-    marker.className = "time-marker";
+    marker.className = `time-marker${segment.start > state.project.duration ? " out-of-range" : ""}`;
 
     const label = document.createElement("div");
     label.className = "time-label";
@@ -117,7 +139,7 @@ function renderTimeline() {
 
     const chip = document.createElement("div");
     chip.className = "segment-type";
-    chip.textContent = typeLabel(segment.type);
+    chip.textContent = segment.start > state.project.duration ? "Beyond end" : typeLabel(segment.type);
 
     card.append(thumb, copy, chip);
     card.addEventListener("click", () => {
@@ -128,6 +150,8 @@ function renderTimeline() {
     marker.append(label, card);
     timeline.appendChild(marker);
   });
+
+  renderDurationNotice();
 }
 
 function renderPreview(segment) {
@@ -216,15 +240,19 @@ function renderEditor() {
   `;
 
   const bind = (id, event, fn) => document.getElementById(id).addEventListener(event, fn);
-
   bind("editType", "change", event => { segment.type = event.target.value; render(); });
   bind("editStart", "change", event => {
-    segment.start = Math.min(state.project.duration, Math.max(0, parseTime(event.target.value)));
+    const parsed = parseTime(event.target.value);
+    if (Number.isFinite(parsed)) segment.start = Math.max(0, parsed);
     render();
   });
   bind("editTiming", "change", event => { segment.endMode = event.target.value; render(); });
   bind("editDuration", "change", event => { segment.duration = Math.max(1, Number(event.target.value) || 1); render(); });
-  bind("editEnd", "change", event => { segment.end = Math.max(segment.start, parseTime(event.target.value)); render(); });
+  bind("editEnd", "change", event => {
+    const parsed = parseTime(event.target.value);
+    if (Number.isFinite(parsed)) segment.end = Math.max(segment.start, parsed);
+    render();
+  });
   bind("editImage", "input", event => { segment.imageUrl = event.target.value; renderPreview(segment); renderTimeline(); });
   bind("editText", "input", event => { segment.text = event.target.value; renderPreview(segment); renderTimeline(); });
 
@@ -235,12 +263,7 @@ function renderEditor() {
   });
 
   bind("duplicateSegment", "click", () => {
-    const copy = {
-      ...segment,
-      id: crypto.randomUUID(),
-      start: Math.min(state.project.duration, effectiveEnd(segment)),
-      title: segment.title ? `${segment.title} copy` : ""
-    };
+    const copy = { ...segment, id: crypto.randomUUID(), start: Math.max(0, effectiveEnd(segment)), title: segment.title ? `${segment.title} copy` : "" };
     state.project.segments.push(copy);
     state.selectedId = copy.id;
     render();
@@ -250,19 +273,43 @@ function renderEditor() {
 function render() {
   renderTimeline();
   renderEditor();
+  if (jsonViewDialog.open) jsonViewOutput.value = projectJson();
 }
 
 function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
 
-function escapeAttribute(value) {
-  return escapeHtml(value);
+function escapeAttribute(value) { return escapeHtml(value); }
+
+function normaliseImportedProject(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Project JSON must be an object.");
+  if (!Array.isArray(input.segments)) throw new Error("Project JSON must contain a segments array.");
+  const duration = Number(input.duration);
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error("Project duration must be greater than zero.");
+
+  const project = {
+    ...input,
+    schemaVersion: input.schemaVersion || 1,
+    title: String(input.title || "Untitled timeline"),
+    duration,
+    format: input.format && Number(input.format.width) && Number(input.format.height)
+      ? input.format
+      : { width: 1920, height: 1080 },
+    segments: input.segments.map((segment, index) => ({
+      ...segment,
+      id: segment.id || crypto.randomUUID(),
+      type: segment.type || "blank",
+      start: Number.isFinite(Number(segment.start)) ? Math.max(0, Number(segment.start)) : 0,
+      endMode: ["next", "duration", "end"].includes(segment.endMode) ? segment.endMode : "next",
+      duration: Number.isFinite(Number(segment.duration)) ? Number(segment.duration) : 10,
+      text: segment.text ?? "",
+      imageUrl: segment.imageUrl ?? "",
+      _importOrder: index
+    }))
+  };
+  project.segments.forEach(segment => delete segment._importOrder);
+  return project;
 }
 
 document.getElementById("newProjectBtn").addEventListener("click", () => projectDialog.showModal());
@@ -274,19 +321,19 @@ document.getElementById("addSegmentBtn").addEventListener("click", () => {
 });
 document.getElementById("cancelSegmentBtn").addEventListener("click", () => segmentDialog.close());
 
+projectDurationInput.addEventListener("change", () => {
+  const parsed = parseTime(projectDurationInput.value);
+  if (Number.isFinite(parsed) && parsed > 0) state.project.duration = parsed;
+  render();
+});
+
 projectForm.addEventListener("submit", event => {
   event.preventDefault();
   const minutes = Math.max(0, Number(document.getElementById("minutesInput").value) || 0);
   const seconds = Math.min(59, Math.max(0, Number(document.getElementById("secondsInput").value) || 0));
   const duration = minutes * 60 + seconds;
   if (!duration) return;
-
-  state.project = {
-    title: document.getElementById("projectNameInput").value.trim() || "Untitled timeline",
-    duration,
-    format: { width: 1920, height: 1080 },
-    segments: []
-  };
+  state.project = { schemaVersion: 1, title: document.getElementById("projectNameInput").value.trim() || "Untitled timeline", duration, format: { width: 1920, height: 1080 }, segments: [] };
   state.selectedId = null;
   projectDialog.close();
   render();
@@ -294,10 +341,11 @@ projectForm.addEventListener("submit", event => {
 
 segmentForm.addEventListener("submit", event => {
   event.preventDefault();
+  const parsed = parseTime(document.getElementById("segmentStartInput").value);
   const segment = {
     id: crypto.randomUUID(),
     type: document.getElementById("segmentTypeInput").value,
-    start: Math.min(state.project.duration, Math.max(0, parseTime(document.getElementById("segmentStartInput").value))),
+    start: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
     endMode: "next",
     duration: 10,
     text: "",
@@ -307,6 +355,33 @@ segmentForm.addEventListener("submit", event => {
   state.selectedId = segment.id;
   segmentDialog.close();
   render();
+});
+
+document.getElementById("viewJsonBtn").addEventListener("click", () => {
+  jsonViewOutput.value = projectJson();
+  jsonViewDialog.showModal();
+});
+document.getElementById("closeJsonViewBtn").addEventListener("click", () => jsonViewDialog.close());
+
+document.getElementById("importJsonBtn").addEventListener("click", () => {
+  jsonImportInput.value = projectJson();
+  jsonImportError.hidden = true;
+  jsonImportDialog.showModal();
+});
+document.getElementById("cancelJsonImportBtn").addEventListener("click", () => jsonImportDialog.close());
+jsonImportForm.addEventListener("submit", event => {
+  event.preventDefault();
+  try {
+    const parsed = JSON.parse(jsonImportInput.value);
+    state.project = normaliseImportedProject(parsed);
+    state.selectedId = null;
+    jsonImportError.hidden = true;
+    jsonImportDialog.close();
+    render();
+  } catch (error) {
+    jsonImportError.textContent = error.message || "That JSON could not be loaded.";
+    jsonImportError.hidden = false;
+  }
 });
 
 render();
