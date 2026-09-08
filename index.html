@@ -46,10 +46,9 @@
       <div class="preview-frame" id="previewFrame">
         <div class="preview-placeholder">Select a segment</div>
       </div>
-
       <div id="segmentEditor" class="segment-editor empty-state">
         <h3>Nothing selected</h3>
-        <p>Add a segment or select one from the timeline to edit it here.</p>
+        <p>Add a segment or select one from the timeline.</p>
       </div>
     </aside>
   </main>
@@ -57,19 +56,10 @@
   <dialog id="projectDialog">
     <form method="dialog" id="projectForm" class="dialog-form">
       <h2>Create timeline</h2>
-      <label>
-        Project title
-        <input id="projectNameInput" value="My podcast episode" required>
-      </label>
+      <label>Project title<input id="projectNameInput" value="My podcast episode" required></label>
       <div class="field-row">
-        <label>
-          Minutes
-          <input id="minutesInput" type="number" min="0" value="10" required>
-        </label>
-        <label>
-          Seconds
-          <input id="secondsInput" type="number" min="0" max="59" value="0" required>
-        </label>
+        <label>Minutes<input id="minutesInput" type="number" min="0" value="10" required></label>
+        <label>Seconds<input id="secondsInput" type="number" min="0" max="59" value="0" required></label>
       </div>
       <div class="dialog-actions">
         <button type="button" id="cancelProjectBtn" class="secondary-btn">Cancel</button>
@@ -81,8 +71,7 @@
   <dialog id="segmentDialog">
     <form method="dialog" id="segmentForm" class="dialog-form">
       <h2>Add segment</h2>
-      <label>
-        Type
+      <label>Type
         <select id="segmentTypeInput">
           <option value="image">Image</option>
           <option value="text">Text slide</option>
@@ -90,15 +79,35 @@
           <option value="blank">Blank / colour</option>
         </select>
       </label>
-      <label>
-        Start time
-        <input id="segmentStartInput" value="00:00" placeholder="mm:ss">
-      </label>
+      <label>Start time<input id="segmentStartInput" value="00:00" placeholder="mm:ss"></label>
       <div class="dialog-actions">
         <button type="button" id="cancelSegmentBtn" class="secondary-btn">Cancel</button>
         <button value="default" class="primary-btn">Add</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="segmentEditDialog" class="segment-edit-dialog">
+    <div class="segment-edit-shell">
+      <div class="segment-edit-topbar">
+        <div>
+          <div class="eyebrow">Segment editor</div>
+          <h2>Edit segment</h2>
+        </div>
+        <button id="closeSegmentEditBtn" type="button" class="secondary-btn">Done</button>
+      </div>
+
+      <div class="segment-edit-layout">
+        <section class="segment-canvas-column">
+          <div id="segmentCanvas" class="segment-canvas">
+            <div class="preview-placeholder">Add an image or text</div>
+          </div>
+          <p class="canvas-hint">Drag the image to reposition it. Use zoom for the crop.</p>
+        </section>
+
+        <section id="segmentEditControls" class="segment-edit-controls"></section>
+      </div>
+    </div>
   </dialog>
 
   <dialog id="jsonViewDialog" class="json-dialog">
