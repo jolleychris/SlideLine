@@ -18,6 +18,11 @@ function liveImageTransform(img, segment) {
   img.style.willChange = 'transform, object-position';
 }
 
+// app.js uses this for timeline thumbnails as well as the main preview.
+applyImageTransform = function applyImageTransformLive(img, segment) {
+  liveImageTransform(img, segment);
+};
+
 renderVisualInto = function renderVisualIntoLive(container, segment) {
   if (!segment) {
     container.innerHTML = '<div class="preview-placeholder">Select a segment</div>';
