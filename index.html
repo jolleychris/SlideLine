@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SlideLine</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="interaction-fixes.css">
 </head>
 <body>
   <header class="app-header">
@@ -102,7 +103,7 @@
           <div id="segmentCanvas" class="segment-canvas">
             <div class="preview-placeholder">Add an image or text</div>
           </div>
-          <p class="canvas-hint">Drag the image to reposition it. Use zoom for the crop.</p>
+          <p class="canvas-hint">Drag to reposition. Pinch or use the zoom slider to crop.</p>
         </section>
 
         <section id="segmentEditControls" class="segment-edit-controls"></section>
@@ -142,5 +143,6 @@
 
   <script src="app.js"></script>
   <script src="live-preview.js"></script>
+  <script src="pinch-zoom.js"></script>
 </body>
 </html>
