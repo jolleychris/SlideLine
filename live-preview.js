@@ -1,26 +1,68 @@
-// Keep the image mounted while editing so zoom and reposition changes feel immediate.
-// Reusing the existing image avoids decoding the same large data URL on every movement.
+// Keep the image mounted while editing so crop changes feel immediate.
+// Positioning is calculated from the image's real aspect ratio rather than from
+// a fixed 100% x 100% object-fit box. This means natural cover overflow can be
+// repositioned even at minimum zoom.
 
-function liveImageTransform(img, segment) {
+function readTransform(segment) {
   const transform = segment.imageTransform || {};
-  const zoom = Number.isFinite(Number(transform.zoom)) ? Math.max(1, Number(transform.zoom)) : 1;
-  const x = Number.isFinite(Number(transform.x)) ? Math.max(0, Math.min(100, Number(transform.x))) : 50;
-  const y = Number.isFinite(Number(transform.y)) ? Math.max(0, Math.min(100, Number(transform.y))) : 50;
-
-  // object-position handles the normal object-fit: cover crop. The translate component
-  // pans across the extra image area created by zooming. At zoom 1 the translate is 0.
-  const panX = ((50 - x) * (zoom - 1)) / zoom;
-  const panY = ((50 - y) * (zoom - 1)) / zoom;
-
-  img.style.objectPosition = `${x}% ${y}%`;
-  img.style.transform = `scale(${zoom}) translate(${panX}%, ${panY}%)`;
-  img.style.transformOrigin = 'center center';
-  img.style.willChange = 'transform, object-position';
+  return {
+    zoom: Number.isFinite(Number(transform.zoom)) ? Math.max(1, Number(transform.zoom)) : 1,
+    x: Number.isFinite(Number(transform.x)) ? Math.max(0, Math.min(100, Number(transform.x))) : 50,
+    y: Number.isFinite(Number(transform.y)) ? Math.max(0, Math.min(100, Number(transform.y))) : 50
+  };
 }
 
-// app.js uses this for timeline thumbnails as well as the main preview.
+function positionImageInContainer(img, container, segment) {
+  const t = readTransform(segment);
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+
+  if (!cw || !ch || !iw || !ih) return;
+
+  // Base scale is the exact cover scale for the current 16:9 canvas.
+  const coverScale = Math.max(cw / iw, ch / ih);
+  const scale = coverScale * t.zoom;
+  const renderedW = iw * scale;
+  const renderedH = ih * scale;
+
+  // The image may already have overflow at zoom 1 because its aspect ratio does
+  // not match 16:9. Zooming adds more overflow. x/y map across that full range.
+  const overflowX = Math.max(0, renderedW - cw);
+  const overflowY = Math.max(0, renderedH - ch);
+  const left = -(overflowX * (t.x / 100));
+  const top = -(overflowY * (t.y / 100));
+
+  img.style.position = 'absolute';
+  img.style.width = `${renderedW}px`;
+  img.style.height = `${renderedH}px`;
+  img.style.maxWidth = 'none';
+  img.style.maxHeight = 'none';
+  img.style.left = `${left}px`;
+  img.style.top = `${top}px`;
+  img.style.objectFit = 'fill';
+  img.style.objectPosition = '50% 50%';
+  img.style.transform = 'none';
+  img.style.transformOrigin = '0 0';
+  img.style.willChange = 'left, top, width, height';
+}
+
+function liveImageTransform(img, segment) {
+  const container = img.parentElement;
+  if (!container) return;
+
+  const apply = () => positionImageInContainer(img, container, segment);
+  if (img.complete && img.naturalWidth) apply();
+  else img.addEventListener('load', apply, { once: true });
+}
+
 applyImageTransform = function applyImageTransformLive(img, segment) {
-  liveImageTransform(img, segment);
+  // Timeline thumbnails are created before they are attached. Apply after load
+  // and once again on the next frame when the parent has measurable dimensions.
+  const apply = () => liveImageTransform(img, segment);
+  if (img.complete && img.naturalWidth) requestAnimationFrame(apply);
+  else img.addEventListener('load', () => requestAnimationFrame(apply), { once: true });
 };
 
 renderVisualInto = function renderVisualIntoLive(container, segment) {
@@ -39,8 +81,13 @@ renderVisualInto = function renderVisualIntoLive(container, segment) {
       img.alt = '';
       container.prepend(img);
     }
-    if (img.src !== segment.imageUrl) img.src = segment.imageUrl;
-    liveImageTransform(img, segment);
+
+    if (img.src !== segment.imageUrl) {
+      img.src = segment.imageUrl;
+      img.addEventListener('load', () => liveImageTransform(img, segment), { once: true });
+    } else {
+      liveImageTransform(img, segment);
+    }
   } else if (img) {
     img.remove();
     img = null;
@@ -83,3 +130,10 @@ renderVisualInto = function renderVisualIntoLive(container, segment) {
     overlay.remove();
   }
 };
+
+window.addEventListener('resize', () => {
+  document.querySelectorAll('img[data-slide-image]').forEach(img => {
+    const segment = state.project.segments.find(item => item.id === state.selectedId);
+    if (segment) liveImageTransform(img, segment);
+  });
+});
