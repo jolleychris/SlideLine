@@ -1,0 +1,11 @@
+.segment-thumb {
+  position: relative;
+  overflow: hidden;
+  contain: paint;
+}
+
+.segment-thumb > img {
+  position: absolute;
+  max-width: none;
+  max-height: none;
+}
